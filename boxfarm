@@ -1,0 +1,77 @@
+local ScreenGui = Instance.new("ScreenGui")
+local ToggleButton = Instance.new("TextButton")
+
+ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+ToggleButton.Parent = ScreenGui
+ToggleButton.Size = UDim2.new(0, 200, 0, 50)
+ToggleButton.Position = UDim2.new(0.5, -100, 0.1, 0)
+ToggleButton.Text = "Toggle Teleportation"
+ToggleButton.BackgroundColor3 = Color3.new(0.2, 0.5, 0.8)
+ToggleButton.TextColor3 = Color3.new(1, 1, 1)
+ToggleButton.TextScaled = true
+ToggleButton.Draggable = true
+
+local teleporting = false
+local boxPositions = game.Workspace:WaitForChild("BoxPositions")
+local currentBox = nil
+
+local function teleportToNextValidPosition()
+    for _, box in ipairs(boxPositions:GetChildren()) do
+        if box:IsA("BasePart") and #box:GetChildren() > 0 then
+            if currentBox ~= box then
+                currentBox = box
+                local character = game.Players.LocalPlayer.Character
+                if character and character:FindFirstChild("HumanoidRootPart") then
+                    character.HumanoidRootPart.CFrame = box.CFrame
+                end
+                return
+            end
+        end
+    end
+    currentBox = nil -- Reset if no valid boxes are found
+end
+
+
+local teleportLoop
+local function toggleTeleportation()
+    teleporting = not teleporting
+    ToggleButton.Text = teleporting and "Stop Teleportation" or "Start Teleportation"
+    if teleporting then
+        teleportLoop = coroutine.create(function()
+            while teleporting do
+                teleportToNextValidPosition()
+                if currentBox and #currentBox:GetChildren() == 0 then
+                    teleportToNextValidPosition()
+                end
+                wait(0.1) -- Slight delay to avoid excessive checks
+            end
+        end)
+        coroutine.resume(teleportLoop)
+    else
+        teleporting = false
+    end
+end
+
+-- AutoClick Function
+local function simulateClick()
+    if teleporting then
+        local character = game.Players.LocalPlayer.Character
+        if character then
+            local tool = character:FindFirstChildWhichIsA("Tool")
+            if tool and tool:FindFirstChild("Activate") then
+                tool:Activate()
+            end
+        end
+    end
+end
+
+-- Keybind for Toggle
+game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.Z then
+        toggleTeleportation()
+    end
+end)
+
+-- Connect Button
+ToggleButton.MouseButton1Click:Connect(toggleTeleportation)
